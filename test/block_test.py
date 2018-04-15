@@ -1,4 +1,13 @@
-# coding=utf-8
+# -*- coding: utf-8 -*-
+"""
+    block_test
+    ~~~~~~~~~~
+
+    general test of blockchain functions
+
+    :author: hank
+"""
+
 import unittest
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives import hashes
@@ -36,7 +45,7 @@ class BlockChainTestCase(unittest.TestCase):
             public_key_hash.append(sha.digest())
         self.public_key_hash_list = public_key_hash
         from random import randint
-        toutput = [(randint(0, 10240), randint(0, 10240), randint(0, 10240), public_key_hash[i]) for i in range(5)]
+        toutput = [(randint(0, 10240), public_key_hash[i]) for i in range(5)]
         self.T2 = blockchain.TransOutput(toutput)
         self.T3 = blockchain.Transaction(self.T1, self.T2)
 
@@ -49,8 +58,8 @@ class BlockChainTestCase(unittest.TestCase):
 
     def test_001_trans_output_build(self):
         T = self.T2
-        self.assertEqual(T[2][3], self.public_key_hash_list[2])
-        self.assertEqual(len(T.b), 5 * 44)
+        self.assertEqual(T[2][1], self.public_key_hash_list[2])
+        self.assertEqual(len(T.b), 5 * 40)
 
     def test_002_transaction_build(self):
         T = self.T3
@@ -126,7 +135,7 @@ class BlockChainTestCase(unittest.TestCase):
             sha.update(public_key)
             public_key_hash.append(sha.digest())
         from random import randint
-        toutput = [(randint(0, 10240), randint(0, 10240), randint(0, 10240), public_key_hash[i]) for i in range(5)]
+        toutput = [(randint(0, 10240), public_key_hash[i]) for i in range(5)]
         T2 = blockchain.TransOutput(toutput)
 
         T = blockchain.Transaction(T1, T2)
@@ -178,7 +187,7 @@ class BlockChainTestCase(unittest.TestCase):
             sha.update(public_key)
             public_key_hash.append(sha.digest())
         from random import randint
-        toutput = [(randint(0, 10240), randint(0, 10240), randint(0, 10240), public_key_hash[i]) for i in range(5)]
+        toutput = [(randint(0, 10240), public_key_hash[i]) for i in range(5)]
         T2 = blockchain.TransOutput(toutput)
 
         T = blockchain.Transaction(T1, T2)
@@ -251,7 +260,7 @@ class BlockChainTestCase(unittest.TestCase):
             sha.update(public_key)
             public_key_hash.append(sha.digest())
         from random import randint
-        toutput = [(randint(0, 10240), randint(0, 10240), randint(0, 10240), public_key_hash[i]) for i in range(5)]
+        toutput = [(randint(0, 10240), public_key_hash[i]) for i in range(5)]
         T2 = blockchain.TransOutput(toutput)
 
         T = blockchain.Transaction(T1, T2)
@@ -271,6 +280,92 @@ class BlockChainTestCase(unittest.TestCase):
         self.assertEqual(block.timestamp, block_copy.timestamp)
         self.assertEqual(block.index, block_copy.index)
         self.assertEqual(block.data.attachment.content, block_copy.data.attachment.content)
+
+    def test_010_block_search(self):
+        private_key = ec.generate_private_key(ec.SECP256K1, default_backend())
+        public_key = private_key.public_key()
+        public_key = public_key.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)
+        sha = hashlib.sha256()
+        sha.update(public_key)
+        public_key_hash = sha.digest()
+        tinput = [
+            (bytes(32), 1),
+            (bytes(32), 2),
+            (public_key_hash, 3),
+            (public_key_hash, 4)
+        ]
+        T1 = blockchain.TransInput(tinput, public_key_hash)
+
+        public_key_hash = []
+        for i in range(5):
+            private_key = ec.generate_private_key(ec.SECP256K1, default_backend())
+            public_key = private_key.public_key()
+            public_key = public_key.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)
+            sha = hashlib.sha256()
+            sha.update(public_key)
+            public_key_hash.append(sha.digest())
+        from random import randint
+        toutput = [(randint(0, 10240), public_key_hash[i]) for i in range(5)]
+        T2 = blockchain.TransOutput(toutput)
+
+        T = blockchain.Transaction(T1, T2)
+        T.ready(private_key)
+
+        at = blockchain.Attachment()
+        at.add_data(b'latex')
+        at.ready()
+
+        bd = blockchain.BlockData([T, T], at)
+        t = time.time()
+        block = blockchain.Block(1, t, bd, bytes(32))
+        chain = blockchain.Blockchain()
+        block.previous_hash = chain.chain.queue[0].hash
+        chain.add_block(block)
+        block1 = chain.search_block(index=1)
+        self.assertEqual(block1.data.attachment.content, b'latex')
+        block1 = chain.search_block(hash=block.hash)
+        self.assertEqual(block1.data.attachment.content, b'latex')
+        block1 = chain.search_block(timestamp=t)
+        self.assertEqual(block1.data.attachment.content, b'latex')
+
+    def test_011_UTXOTABLE(self):
+        private_key = ec.generate_private_key(ec.SECP256K1, default_backend())
+        public_key = private_key.public_key()
+        public_key = public_key.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)
+        sha = hashlib.sha256()
+        sha.update(public_key)
+        public_key_hash = sha.digest()
+        tinput = [
+            (bytes(32), 1),
+            (bytes(32), 2),
+            (public_key_hash, 3),
+            (public_key_hash, 4)
+        ]
+        T1 = blockchain.TransInput(tinput, public_key_hash)
+
+        public_key_hash = []
+        for i in range(5):
+            private_key = ec.generate_private_key(ec.SECP256K1, default_backend())
+            public_key = private_key.public_key()
+            public_key = public_key.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)
+            sha = hashlib.sha256()
+            sha.update(public_key)
+            public_key_hash.append(sha.digest())
+        from random import randint
+        toutput = [(randint(0, 10240), public_key_hash[i]) for i in range(5)]
+        T2 = blockchain.TransOutput(toutput)
+
+        T = blockchain.Transaction(T1, T2)
+        T.ready(private_key)
+
+        from source.blockchain import UTXOTable
+        table = UTXOTable()
+        table.add(T)
+        table.info((T.txid, 4))
+        table.info((T.txid, 3))
+        self.assertTrue(table.check((T.txid, 4), T.opt[4][0], T.opt[4][1]))
+        self.assertFalse(table.check((T.txid, 3), T.opt[4][0], T.opt[4][1]))
+        self.assertFalse(table.check((T.txid, 6), T.opt[4][0], T.opt[4][1]))
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

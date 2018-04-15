@@ -1,4 +1,12 @@
+# -*- coding: utf-8 -*-
+"""
+    errors
+    ~~~~~~~~~~
 
+    Collection of errors
+
+    :author: hank
+"""
 
 class BlockchainError(Exception):
     pass

@@ -31,13 +31,13 @@ class BlockChainTestCase(unittest.TestCase):
         used up, the new transaction is invalid. Finally, the test pays 7 from random address 1 to address 2.
         """
 
-        tinput = [
-            # replace the first parameter with the hash that chainbase generates
-            (b'"K\x02\x18\xd4_C\x1fp\x15\x94\x11*?J\x8a\xc6\x1aoT\x05\xee`g\xcc=b{r\x86\xe0\xf5', 0)
-        ]
         # replace the following connection address with the address that chainbase generates
-        socketfile = '/tmp/0.2026088804904984'
+        socketfile = '/tmp/0.7157188059140688'
 
+
+        tinput = [
+            (b'O\x1e,-\xe1\xa0!\x16D\x87\xcc\x923\xf7\xf6\xca\xad\xd1\t\x8eV\xdc\xe8t}N\xfa\x8af\xbe\xe7\xef', 0)
+        ]
 
         private_key1 = load_pem_private_key(b'-----BEGIN PRIVATE KEY-----\nMIGEAgEAMBAGByqGSM49AgEGBSuBBAAKBG0w'
                                             b'awIBAQQg64DiDBUkuGC5rrTfH6uy\nHt6vhvHrMHj3Gm64SZtdqtKhRANCAATMIea'
@@ -123,7 +123,8 @@ class BlockChainTestCase(unittest.TestCase):
             self.assertEqual(length, 0)
             self.assertEqual(msgtype, MsgType.TYPE_RESPONSE_OK)  # the chainbase returns OK
 
-
+    def test_001_block_write(self):
+        pass
     # def test_001_trans_read(self):
     #
     #

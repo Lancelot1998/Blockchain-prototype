@@ -248,17 +248,18 @@ class BlockData:
 
 class Block:
 
-    def __init__(self, index: int, timestamp: float, blockdata: BlockData, previous_hash: bytes) -> None:
+    def __init__(self, index: int, timestamp: float, blockdata: BlockData, previous_hash: bytes, nonce = None) -> None:
         self.index = index
         self.timestamp = timestamp
         self.data = blockdata
         self.previous_hash = previous_hash
+        self.nonce = nonce
         self.hash, content = self.__hash_block()
         self.b = self.__tobin(content)
 
     def __hash_block(self) -> Tuple[bytes, bytes]:
         sha = hashlib.sha256()
-        content = struct.pack('=id', self.index, self.timestamp) + self.data.b + self.previous_hash
+        content = struct.pack('=idi', self.index, self.timestamp, self.nonce) + self.data.b + self.previous_hash
         sha.update(content)
         return sha.digest(), content
 
@@ -269,12 +270,13 @@ class Block:
     def unpack(cls, b: bytes) -> 'Block':
         Verify.block_checker(b)
         blockhash = b[:BLENGTH_BLOCKHASH]
-        index, timestamp = struct.unpack('=id', b[BLENGTH_BLOCKHASH: BLENGTH_BLOCKHASH + BLENGTH_INT + BLENGTH_DOUBLE])
+        index, timestamp, nonce = \
+            struct.unpack('=idi', b[BLENGTH_BLOCKHASH: BLENGTH_BLOCKHASH + BLENGTH_INT + BLENGTH_DOUBLE + BLENGTH_INT])
         previous_hash = b[-BLENGTH_BLOCKHASH:]
-        b_data = b[BLENGTH_BLOCKHASH + BLENGTH_INT + BLENGTH_DOUBLE: -BLENGTH_BLOCKHASH]
+        b_data = b[BLENGTH_BLOCKHASH + BLENGTH_INT + BLENGTH_DOUBLE + BLENGTH_INT: -BLENGTH_BLOCKHASH]
         data = BlockData.unpack(b_data)
 
-        block = cls(index, timestamp, data, previous_hash)
+        block = cls(index, timestamp, data, previous_hash, nonce)
         block.hash = blockhash
         block.b = b
         return block
@@ -348,7 +350,6 @@ class UTXOTable:
 
 class Blockchain:
     """
-    no password
     b'-----BEGIN PRIVATE KEY-----\n
     MIGEAgEAMBAGByqGSM49AgEGBSuBBAAKBG0wawIBAQQg64DiDBUkuGC5rrTfH6uy\n
     Ht6vhvHrMHj3Gm64SZtdqtKhRANCAATMIeaIK4vT0ni00F6GGW40qioinPFgXjsj\n
@@ -363,27 +364,47 @@ class Blockchain:
     """
 
     def __init__(self) -> None:
-        b = b'\xbe\x0e\xa2U\xd6\xc9\xa6\xd6C\xe0\x06\xf5{\x89^4\x1b\xb3\x95z\x04}\xc1\xf8]\xe3\xc6\x82\xdc\xb1\x90E'
-        priv_key = load_der_private_key(
-            b'0\x81\x84\x02\x01\x000\x10\x06\x07*\x86H\xce=\x02\x01\x06\x05+\x81\x04\x00\n\x04m0k\x02\x01\x01\x04 '
-            b'\xa6qo\xd3\x95}e\xeb\x0f\xa2\xc3U\xa5\xf2v\x85\x19\xbc@\xf7\xfd\xcb^\xa2\xe3\x96N\xff\nh\xd0\x85\xa1D'
-            b'\x03B\x00\x04\xecm\xa8\x92U@;\xb3\xe6\x90\xec\x05+*\x11-\x16b\x8e\xba\xe5\x12\xb4\x93x\xea\xce\x11'
-            b'\xccNPq\xb5\xcb\x08\xc6`\xb2\xd3Y]o\xbciz\xad\xd2\xf4\xc3\x1c,\xaa\x19xs{\x8c\xa9a\xc7\x03\xcb\x18^',
-            None,
-            default_backend()
-        )
-        ipt = TransInput([(b, 0)], b)
-        opt = TransOutput([(42, b'\x8b\x8dZ\x80\xde\x82k\xe1>0F\xf4\xbbh\x93\x04\xef\x8e\x9b\xe2\xb2\xd9\xe1\x9c\x80\x10H\xb6\xa1\xfd\x02\xbf')])
-        trans = Transaction(ipt, opt)
-        trans.ready(priv_key)
-        print(trans.txid)
+        # b = b'\xbe\x0e\xa2U\xd6\xc9\xa6\xd6C\xe0\x06\xf5{\x89^4\x1b\xb3\x95z\x04}\xc1\xf8]\xe3\xc6\x82\xdc\xb1\x90E'
+        # priv_key = load_der_private_key(
+        #     b'0\x81\x84\x02\x01\x000\x10\x06\x07*\x86H\xce=\x02\x01\x06\x05+\x81\x04\x00\n\x04m0k\x02\x01\x01\x04 '
+        #     b'\xa6qo\xd3\x95}e\xeb\x0f\xa2\xc3U\xa5\xf2v\x85\x19\xbc@\xf7\xfd\xcb^\xa2\xe3\x96N\xff\nh\xd0\x85\xa1D'
+        #     b'\x03B\x00\x04\xecm\xa8\x92U@;\xb3\xe6\x90\xec\x05+*\x11-\x16b\x8e\xba\xe5\x12\xb4\x93x\xea\xce\x11'
+        #     b'\xccNPq\xb5\xcb\x08\xc6`\xb2\xd3Y]o\xbciz\xad\xd2\xf4\xc3\x1c,\xaa\x19xs{\x8c\xa9a\xc7\x03\xcb\x18^',
+        #     None,
+        #     default_backend()
+        # )
+        # ipt = TransInput([(b, 0)], b)
+        # opt = TransOutput([(42, b'\x8b\x8dZ\x80\xde\x82k\xe1>0F\xf4\xbbh\x93\x04\xef\x8e'
+        #                         b'\x9b\xe2\xb2\xd9\xe1\x9c\x80\x10H\xb6\xa1\xfd\x02\xbf')])
+        # trans = Transaction(ipt, opt)
+        # trans.ready(priv_key)
+        #
+        #
+        # at = Attachment()
+        # at.add_data(b'')
+        # at.ready()
+        # bd = BlockData([trans], at)
+        # block = Block(0, 0, bd, bytes(32), 0)
+        #
+        # print('trans', trans.txid)
+        # print('block', block.b)
 
-        at = Attachment()
-        at.add_data(b)
-        at.ready()
-        bd = BlockData([trans], at)
-        block = Block(0, 0, bd, b)
-        block.hash = b
+
+        # genesis block
+        block = Block.unpack(b'G\xfdk\x88\xda5\xff\x8c\x97t\x9f\xcb\xe0\xa8\x07S\x8b9t:.9\x1d\xee\xf4\xb1\xda\xd1r\xaf'
+                             b'\xfcu\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+                             b'\x99\x01\x00\x00O\x1e,-\xe1\xa0!\x16D\x87\xcc\x923\xf7\xf6\xca\xad\xd1\t\x8eV\xdc\xe8t}N'
+                             b'\xfa\x8af\xbe\xe7\xef\x01\x00\x00\x00\x89\x92N\xd8h\xb5\xd6A\xae\x00\x00\x00D\x00\x00'
+                             b'\x00(\x00\x00\x00-----BEGIN PUBLIC KEY-----\nMFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAE7G2oklVAO7P'
+                             b'mkOwFKyoRLRZijrrlErST\neOrOEcxOUHG1ywjGYLLTWV1vvGl6rdL0wxwsqhl4c3uMqWHHA8sYXg==\n-----EN'
+                             b'D PUBLIC KEY-----\n\xbe\x0e\xa2U\xd6\xc9\xa6\xd6C\xe0\x06\xf5{\x89^4\x1b\xb3\x95z\x04}'
+                             b'\xc1\xf8]\xe3\xc6\x82\xdc\xb1\x90E\x00\x00\x00\x00\xbe\x0e\xa2U\xd6\xc9\xa6\xd6C\xe0\x06'
+                             b'\xf5{\x89^4\x1b\xb3\x95z\x04}\xc1\xf8]\xe3\xc6\x82\xdc\xb1\x90E\x00\x00\x00\x00\x00'
+                             b'\x00E@\x8b\x8dZ\x80\xde\x82k\xe1>0F\xf4\xbbh\x93\x04\xef\x8e\x9b\xe2\xb2\xd9\xe1\x9c\x80'
+                             b'\x10H\xb6\xa1\xfd\x02\xbf0E\x02!\x00\xfa\xff2\x10\x08\x18\xce~\x10\xb3\xe5\xc7y\xfd]\xd4'
+                             b'\x13tj\x9bx\n3-\xef\xe5\t\xe3\xd6R+\x16\x02 \x17L\x07\xb5E c\xc8\xf5l\xc7\xc1\xa7BM'
+                             b'\xbb0Y/\x9b\x89\xb0a_9\x0bi\xe2*\x0b\xda\xf9\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+                             b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00')
 
         self.chain = queue.Queue()
         self.chain.put(block)
@@ -392,10 +413,17 @@ class Blockchain:
         for trans in block.data.trans:
             self.utxo.add(trans)
 
-    def add_block(self, block: Block) -> None:
-        Verify.add_block_verifier(self.chain.queue[-1], block)
-        # todo: update UTXO table
+    def add_block(self, block: Block) -> bool:
+        if not Verify.add_block_verifier(self, block):
+            return False
+
+        # update the UTXO table
+        for trans in block.data.trans:
+            self.utxo.delete(trans)
+            self.utxo.add(trans)
+
         self.chain.put(block)
+        return True
 
     def size(self) -> int:
         return self.chain.qsize()
@@ -518,18 +546,28 @@ class TransPool:
         return [trans.b for trans in self.read()]
 
 
-class Verify:  # todo: logical verifier need to be implemented
+class Verify:
     def __init__(self):
         pass
 
-    '''
-    Check if a block refers correct previous block's hash
-    '''
     @staticmethod
-    def add_block_verifier(prev_block: Block, block: Block):
-        if block.previous_hash != prev_block.hash:
-            raise PreviousBlockHashError
-        pass
+    def add_block_verifier(blockchain: Blockchain, block: Block) -> bool:
+
+        if block.previous_hash != blockchain.chain.queue[-1].hash:
+            return False
+
+        # todo: nonce validation
+        # block.previous_hash + struct.pack('=i', block.nonce) < target
+        # the above 'target' is a property of blockchain, should be calculated from the previous blocks.
+
+        # to validate the transactions in the block
+        # reuse validation rules written in the TransPool
+        temppool = TransPool(blockchain)
+        for trans in block.data.trans[1:]:
+            if not temppool.add(trans):
+                return False
+
+        return True
 
     @staticmethod
     def __hash_checker(data: bytes, hash_: bytes) -> bool:

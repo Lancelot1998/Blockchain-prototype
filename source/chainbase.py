@@ -31,22 +31,33 @@ class ChainMsgHandler(socketserver.StreamRequestHandler):
             else:
                 self.request.sendall(send_handler(MsgType.TYPE_RESPONSE_ERROR, b''))
 
-        elif msgtype == MsgType.TYPE_TRANS_RETRIEVE:  # provide transactions in the transpool (for consensus)
-            self.request.sendall(
-                send_handler(MsgType.TYPE_RESPONSE_OK,
-                             batch_handler(self.server.transpool.retrieve_serialized(bin2int(content))))
-            )
+        # elif msgtype == MsgType.TYPE_TRANS_RETRIEVE:  # provide transactions in the transpool (for consensus)
+        #     self.request.sendall(
+        #         send_handler(MsgType.TYPE_RESPONSE_OK,
+        #                      batch_handler(self.server.transpool.retrieve_serialized(bin2int(content))))
+        #     )
 
-        elif msgtype == MsgType.TYPE_TRANS_READ:  # provide transactions in the transpool (for query)
-            self.request.sendall(
-                send_handler(MsgType.TYPE_RESPONSE_OK,
-                             batch_handler(self.server.transpool.read_serialized()))
-            )
+        elif msgtype == MsgType.TYPE_TRANS_READ:  # provide transactions in the transpool
+            result = self.server.transpool.read_serialized()
+            if len(result) > 0:
+                self.request.sendall(
+                    send_handler(MsgType.TYPE_RESPONSE_OK, batch_handler(result))
+                )
+            else:
+                self.request.sendall(send_handler(MsgType.TYPE_RESPONSE_ERROR, b''))
 
         elif msgtype == MsgType.TYPE_BLOCK_WRITE:
             # write the submitted block (the result of consensus) to the blockchain
-            self.server.blockchain.add_block(Block.unpack(content))
-            self.request.sendall(MsgType.TYPE_RESPONSE_OK, b'')
+            try:
+                block = Block.unpack(content)
+            except(Exception):
+                self.request.sendall(send_handler(MsgType.TYPE_RESPONSE_ERROR, b''))
+            else:
+                result = self.server.blockchain.add_block(block)
+                if result:
+                    self.request.sendall(send_handler(MsgType.TYPE_RESPONSE_OK, b''))
+                else:
+                    self.request.sendall(send_handler(MsgType.TYPE_RESPONSE_ERROR, b''))
 
 
 class ChainBaseServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):

@@ -84,7 +84,7 @@ class BlockChainTestCase(unittest.TestCase):
         at.add_data(b'I am the king of the kings')
         at.ready()
         bd = blockchain.BlockData([self.T3, self.T3], at)
-        block = blockchain.Block(0, time.time(), bd, bytes(32))
+        block = blockchain.Block(0, time.time(), bd, bytes(32), 33)
         self.assertGreater(len(block.b), 0)
 
     def test_004_trans_input_rebuild(self):
@@ -270,8 +270,8 @@ class BlockChainTestCase(unittest.TestCase):
         at.add_data(b'I am the king of the kings')
         at.ready()
 
-        bd = blockchain.BlockData([T, T], at)
-        block = blockchain.Block(0, time.time(), bd, bytes(32))
+        bd = blockchain.BlockData([T], at)
+        block = blockchain.Block(0, time.time(), bd, bytes(32), 33)
         block_copy = blockchain.Block.unpack(block.b)
 
         self.assertEqual(block.b, block_copy.b)
@@ -280,44 +280,55 @@ class BlockChainTestCase(unittest.TestCase):
         self.assertEqual(block.timestamp, block_copy.timestamp)
         self.assertEqual(block.index, block_copy.index)
         self.assertEqual(block.data.attachment.content, block_copy.data.attachment.content)
+        self.assertEqual(block.nonce, block_copy.nonce)
 
     def test_010_block_search(self):
-        private_key = ec.generate_private_key(ec.SECP256K1, default_backend())
-        public_key = private_key.public_key()
-        public_key = public_key.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)
+        from cryptography.hazmat.primitives.serialization import load_pem_private_key
+        private_key1 = load_pem_private_key(b'-----BEGIN PRIVATE KEY-----\nMIGEAgEAMBAGByqGSM49AgEGBSuBBAAKBG0w'
+                                            b'awIBAQQg64DiDBUkuGC5rrTfH6uy\nHt6vhvHrMHj3Gm64SZtdqtKhRANCAATMIea'
+                                            b'IK4vT0ni00F6GGW40qioinPFgXjsj\n6sZGivW9Ipj+zcDfPc7RxZuFeKFmbtVaUX'
+                                            b'Z877DM4C8ELZs2DPVQ\n-----END PRIVATE KEY-----\n',
+                                           None, default_backend())
+        public_key = b'-----BEGIN PUBLIC KEY-----\nMFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEzCHmiCuL09J4tNBehhluNKoqIpzx' \
+                     b'YF47\nI+rGRor1vSKY/s3A3z3O0cWbhXihZm7VWlF2fO+wzOAvBC2bNgz1UA==\n-----END PUBLIC KEY-----\n'
         sha = hashlib.sha256()
         sha.update(public_key)
         public_key_hash = sha.digest()
+
         tinput = [
-            (bytes(32), 1),
-            (bytes(32), 2),
-            (public_key_hash, 3),
-            (public_key_hash, 4)
+            (b'O\x1e,-\xe1\xa0!\x16D\x87\xcc\x923\xf7\xf6\xca\xad\xd1\t\x8eV\xdc\xe8t}N\xfa\x8af\xbe\xe7\xef', 0)
         ]
         T1 = blockchain.TransInput(tinput, public_key_hash)
 
         public_key_hash = []
-        for i in range(5):
+        private_keys = []
+        public_keys = []
+
+        for i in range(6):
             private_key = ec.generate_private_key(ec.SECP256K1, default_backend())
+            private_keys.append(private_key)
+
             public_key = private_key.public_key()
-            public_key = public_key.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)
+            public_key = public_key.public_bytes(Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
+            public_keys.append(public_key)
+
             sha = hashlib.sha256()
             sha.update(public_key)
             public_key_hash.append(sha.digest())
-        from random import randint
-        toutput = [(randint(0, 10240), public_key_hash[i]) for i in range(5)]
+
+        toutput = [(7, public_key_hash[i]) for i in range(6)]
         T2 = blockchain.TransOutput(toutput)
 
         T = blockchain.Transaction(T1, T2)
-        T.ready(private_key)
+        T.ready(private_key1)
 
         at = blockchain.Attachment()
         at.add_data(b'latex')
         at.ready()
 
-        bd = blockchain.BlockData([T, T], at)
+        bd = blockchain.BlockData([T], at)
         t = time.time()
-        block = blockchain.Block(1, t, bd, bytes(32))
+        block = blockchain.Block(1, t, bd, bytes(32), 33)
         chain = blockchain.Blockchain()
         block.previous_hash = chain.chain.queue[0].hash
         chain.add_block(block)

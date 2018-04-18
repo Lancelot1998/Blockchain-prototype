@@ -10,6 +10,7 @@
 
 from source.blockchain import Blockchain, Block, TransPool
 from source.transfer import MsgType, recv_parser, send_handler, batch_handler
+from source.errors import *
 from source.utility import bin2int
 
 import socketserver
@@ -50,7 +51,7 @@ class ChainMsgHandler(socketserver.StreamRequestHandler):
             # write the submitted block (the result of consensus) to the blockchain
             try:
                 block = Block.unpack(content)
-            except(Exception):
+            except Exception:
                 self.request.sendall(send_handler(MsgType.TYPE_RESPONSE_ERROR, b''))
             else:
                 result = self.server.blockchain.add_block(block)
@@ -58,6 +59,14 @@ class ChainMsgHandler(socketserver.StreamRequestHandler):
                     self.request.sendall(send_handler(MsgType.TYPE_RESPONSE_OK, b''))
                 else:
                     self.request.sendall(send_handler(MsgType.TYPE_RESPONSE_ERROR, b''))
+
+        elif msgtype == MsgType.TYPE_TRANS_SEARCH_TXID:
+            try:
+                trans = self.server.blockchain.search_transaction(content)
+            except TransNotInChain:
+                self.request.sendall(send_handler(MsgType.TYPE_RESPONSE_ERROR, b''))
+            else:
+                self.request.sendall(send_handler(MsgType.TYPE_RESPONSE_OK, trans.b))
 
 
 class ChainBaseServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
@@ -70,7 +79,7 @@ class ChainBaseServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer
 
 if __name__ == '__main__':
     import random
-    sktfile = '/tmp/' + str(random.random())
-    print('Socket file in ', sktfile)
-    with ChainBaseServer(sktfile, ChainMsgHandler) as server:
+    address = (r'/tmp/chainbase'+str(random.random()))
+    print(address)
+    with ChainBaseServer(address, ChainMsgHandler) as server:
         server.serve_forever()

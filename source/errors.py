@@ -11,6 +11,11 @@
 class BlockchainError(Exception):
     pass
 
+class BlockNotInChain(BlockchainError):
+    pass
+
+class TransNotInChain(BlockchainError):
+    pass
 
 class BlockHashError(BlockchainError):
     pass

@@ -1,4 +1,13 @@
-# Blockchain demo
+# Blockchain prototype
+
+## Vision
+
+Develop a blockchain prototype with basic mechanisms, such as Proof-of-Work,
+double-spending validation, and balance validation of transactions. These mechanisms
+are absense in many blockchain demos that I can find. I will implement some of 
+my research idea on this project also.
+
+
 
 ## Components
 - chainbase (developing)

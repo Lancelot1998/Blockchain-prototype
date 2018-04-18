@@ -24,6 +24,7 @@ class MsgType(Enum):
     TYPE_RESPONSE_OK = struct.pack('=i', 9)
     TYPE_RESPONSE_ERROR = struct.pack('=i', 10)
     TYPE_TRANS_READ = struct.pack('=i', 11)
+    TYPE_TRANS_SEARCH = struct.pack('=i', 12)
 
 
 def b_block_pack(block: bytes) -> List[bytes]:

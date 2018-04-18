@@ -418,9 +418,12 @@ class Blockchain:
             return False
 
         # update the UTXO table
-        for trans in block.data.trans:
+        for trans in block.data.trans[1:]:
             self.utxo.delete(trans)
             self.utxo.add(trans)
+
+        # coinbase
+        self.utxo.ad(block.data.trans[0])
 
         self.chain.put(block)
         return True
@@ -438,7 +441,7 @@ class Blockchain:
         if index is not None:
             return [block for block in self.chain.queue if block.index == index].pop()
 
-        return None
+        raise BlockNotInChain
 
     def search_transaction(self, txid: bytes = None, timestamp: float = None) -> Transaction:
         for block in self.chain.queue:
@@ -449,6 +452,7 @@ class Blockchain:
                 if timestamp is not None:
                     if trans.timestamp == timestamp:
                         return trans
+        raise TransNotInChain
 
 
 class TransPool:
@@ -562,6 +566,10 @@ class Verify:
 
         # to validate the transactions in the block
         # reuse validation rules written in the TransPool
+
+        # todo: coinbase transaction validation
+        # the following validations do not cover the first transaction in the block, i.e., coinbase transaction
+        # however, the output of this transactions needs validation
         temppool = TransPool(blockchain)
         for trans in block.data.trans[1:]:
             if not temppool.add(trans):

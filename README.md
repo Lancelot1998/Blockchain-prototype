@@ -31,10 +31,22 @@ The first (genesis) block contains a transaction that pays 42 to the address tha
 ## How to use
 
 Requirements: Python 3.6+, cryptography, flask
-> pip install -r requirements.txt
+
+An easy method is using virtualenv:
+```
+git clone https://github.com/xchank/Blockchain-prototype.git
+cd Blockchain-prototype
+virtualenv venv --python=python3.6
+```
+Use pip to install requirements:
+```
+pip install -r requirements.txt
+```
 
 Export the path to package:
-> export PYTHONPATH=/path/to/bc
+```
+export PYTHONPATH=/path/to/Blockchain-prototype
+```
 
 Run chainbase:
 ```
@@ -42,7 +54,7 @@ cd source
 python chainbase.py
 ```
 
-Replace the related content in test/chainbase_test.py
+Run the test:
 ```
 cd test
 python -m unittest chainbase_test.py

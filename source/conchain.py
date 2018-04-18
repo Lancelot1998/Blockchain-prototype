@@ -7,3 +7,10 @@
 
     :author: hank
 """
+
+from source.transfer import MsgType
+from source.blockchain import Transaction, Block
+
+
+class PoW:
+    pass

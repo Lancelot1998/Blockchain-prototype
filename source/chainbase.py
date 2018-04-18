@@ -68,6 +68,9 @@ class ChainMsgHandler(socketserver.StreamRequestHandler):
             else:
                 self.request.sendall(send_handler(MsgType.TYPE_RESPONSE_OK, trans.b))
 
+        elif msgtype == MsgType.TYPE_BLOCK_PREVIOUS_HASH:  # return the previous hash for constructing nonce
+            self.request.sendall(send_handler(MsgType.TYPE_RESPONSE_OK, self.server.blockchain.chain.queue[-1].hash))
+
 
 class ChainBaseServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
     """

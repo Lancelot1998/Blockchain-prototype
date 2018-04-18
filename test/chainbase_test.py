@@ -24,7 +24,7 @@ from source.transfer import send_handler, batch_parser, MsgType, recv_parser
 class BlockChainTestCase(unittest.TestCase):
     def setUp(self):
         import random
-        self.address = (r'/tmp/chainbase0.8502097602111739')
+        self.address = (r'/tmp/chainbase0.6907788672920935')
 
     def test_000_trans_write(self):
         """
@@ -227,7 +227,7 @@ class BlockChainTestCase(unittest.TestCase):
     def test_003_trans_retrieve(self):
 
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-            s.connect('/home/cx/Desktop/ss')
+            s.connect(self.address)
             s.sendall(send_handler(MsgType.TYPE_TRANS_RETRIEVE, struct.pack('=i', 1)))
             header, length, msgtype, content = recv_parser(s)
             content = batch_parser(content)
@@ -237,3 +237,13 @@ class BlockChainTestCase(unittest.TestCase):
                 Transaction.unpack(i)
             self.assertEqual(msgtype, MsgType.TYPE_RESPONSE_OK)
             self.assertEqual(len(content), 1)
+
+    def test_004_previous_hash(self):
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            s.connect(self.address)
+            s.sendall(send_handler(MsgType.TYPE_BLOCK_PREVIOUS_HASH, b''))
+            header, length, msgtype, content = recv_parser(s)
+
+            self.assertEqual(msgtype, MsgType.TYPE_RESPONSE_OK)
+            self.assertEqual(len(content), 32)
+            print(content)

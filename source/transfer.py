@@ -98,3 +98,14 @@ def recv_content(length: int, request) -> bytes:
         l += len(piece)
 
     return content
+
+
+class PeerManager:
+    def __init__(self):
+        pass
+
+    def add_peer(self, ip):
+        pass
+
+    def sendall(self, msgtype: MsgType, content: bytes):
+        pass

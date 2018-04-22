@@ -14,6 +14,7 @@ from source.errors import *
 from source.utility import bin2int
 
 import socketserver
+import struct
 
 
 class ChainMsgHandler(socketserver.StreamRequestHandler):
@@ -60,7 +61,7 @@ class ChainMsgHandler(socketserver.StreamRequestHandler):
                 else:
                     self.request.sendall(send_handler(MsgType.TYPE_RESPONSE_ERROR, b''))
 
-        elif msgtype == MsgType.TYPE_TRANS_SEARCH_TXID:
+        elif msgtype == MsgType.TYPE_TRANS_SEARCH_TXID:  # search the transaction that has the given txid
             try:
                 trans = self.server.blockchain.search_transaction(content)
             except TransNotInChain:
@@ -70,6 +71,20 @@ class ChainMsgHandler(socketserver.StreamRequestHandler):
 
         elif msgtype == MsgType.TYPE_BLOCK_PREVIOUS_HASH:  # return the previous hash for constructing nonce
             self.request.sendall(send_handler(MsgType.TYPE_RESPONSE_OK, self.server.blockchain.chain.queue[-1].hash))
+
+        elif msgtype == MsgType.TYPE_BLOCK_READ:  # send back blocks whose indexes locate in [start, end]
+            start = bin2int(content[:4])
+            end = bin2int(content[4:8])
+
+            # do the search
+
+
+            # send back result
+
+            # self.request.sendall(
+            #     send_handler(msgtype.TYPE_RESPONSE_OK,
+            #                  batch_handler())
+            # )
 
 
 class ChainBaseServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):

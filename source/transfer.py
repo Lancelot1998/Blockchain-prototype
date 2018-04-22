@@ -27,6 +27,7 @@ class MsgType(Enum):
     TYPE_TRANS_SEARCH = struct.pack('=i', 12)
     TYPE_BLOCK_PREVIOUS_HASH = struct.pack('=i', 13)
     TYPE_TRANS_SEARCH_TXID = struct.pack('=i', 14)
+    TYPE_BLOCK_READ = struct.pack('=i', 15)
 
 
 def b_block_pack(block: bytes) -> List[bytes]:

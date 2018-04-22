@@ -431,9 +431,9 @@ class Blockchain:
     def size(self) -> int:
         return self.chain.qsize()
 
-    def search_block(self, hash: bytes = None, timestamp: float = None, index: int = None) -> Block:
-        if hash is not None:
-            return [block for block in self.chain.queue if block.hash == hash].pop()
+    def search_block(self, hash_: bytes = None, timestamp: float = None, index: int = None) -> Block:
+        if hash_ is not None:
+            return [block for block in self.chain.queue if block.hash == hash_].pop()
 
         if timestamp is not None:
             return [block for block in self.chain.queue if block.timestamp == timestamp].pop()

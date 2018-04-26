@@ -22,6 +22,7 @@ from source.errors import *
 from cryptography.hazmat.primitives import hashes, hmac
 from enum import Enum, unique
 from functools import reduce
+from source.utility import bin2int
 import queue
 import threading
 
@@ -41,8 +42,6 @@ BLENGTH_DOUBLE = 8
 BLENGTH_BLOCKHASH = 32
 
 
-
-
 class TransInput:
 
     def __init__(self, trans_input: List[Tuple[TXID, OUTPUT_INDEX]], public_key_hash: PUBLIC_KEY_HASH) -> None:
@@ -60,6 +59,12 @@ class TransInput:
         b += self.public_key_hash
         return b
 
+    def show_input(self):
+        result = {}
+        result["public_key_hash"] = self.public_key_hash
+        result["content"] = self.content
+        print(result)
+
     @classmethod
     def unpack(cls, b: bytes) -> 'TransInput':
         Verify.trans_input_checker(b)
@@ -68,9 +73,29 @@ class TransInput:
         content = list(map(lambda i: (i[:BLENGTH_TXID], struct.unpack('=i', i[-BLENGTH_INT:])[0]), b_content))
         return cls(content, public_key_hash)
 
+    def show_transinput(self) -> dict:
+        transinput_result = dict()
+        # convert public_key_hash to hexadecimal
+        temp = ""
+        for i, index in enumerate(self.public_key_hash):
+            a = str(hex(self.public_key_hash[i]))[2:]
+            temp += a.zfill(2)
+        c = "0x" + temp
+        transinput_result["public_key_hash"] = c
+        # convert TXID to hexadecimal
+        result = []
+        for i, index in enumerate(self.content):
+            temp = ""
+            for d, k in enumerate(self.content[i][0]):
+                a = str(hex(self.content[i][0][d]))[2:]
+                temp += a.zfill(2)
+            c = "0x" + temp
+            result.append((c, self.content[i][1]))
+        transinput_result["content"] = result
+        return transinput_result
+
 
 class TransOutput:
-
     def __init__(self, trans_output: List[Tuple[ASSET, PUBLIC_KEY_HASH]]) -> None:
         self.content = trans_output
         self.b = self.__tobin()
@@ -93,6 +118,20 @@ class TransOutput:
                 b_content)
         )
         return cls(content)
+
+    def show_transoutput(self) -> dict:
+        transoutput_result = dict()
+        result = []
+        # convert PUBLIC_KEY_HASH to hexadecimal
+        for i, index in enumerate(self.content):
+            temp = ""
+            for d, k in enumerate(self.content[i][1]):
+                a = str(hex(self.content[i][1][d]))[2:]
+                temp += a.zfill(2)
+            c = "0x" + temp
+            result.append((self.content[i][0], c))
+        transoutput_result["content"] = result
+        return transoutput_result
 
 
 class Transaction:
@@ -172,8 +211,33 @@ class Transaction:
         transaction.b = b
         transaction.length = len(b)
         transaction.public_key = public_key
-
+        print(transaction.signature, transaction.timestamp, transaction.length)
         return transaction
+
+    def show_trans(self) -> dict:
+        trans_result = dict()
+        trans_result["public_key"] = str(self.public_key.public_bytes(Encoding.PEM, PublicFormat.SubjectPublicKeyInfo),\
+                                         encoding="utf-8")
+        # convert signature to hexadecimal
+        q = ""
+        for i, index in enumerate(self.signature):
+            a = str(hex(self.signature[i]))[2:]
+            q += a.zfill(2)
+        c = "0x" + q
+        trans_result["signature"] = c
+        trans_result["version"] = self.version
+        trans_result["timestamp"] = self.timestamp
+        # convert txid to hexadecimal
+        q = ""
+        for i, index in enumerate(self.txid):
+            a = str(hex(self.txid[i]))[2:]
+            q += a.zfill(2)
+        c = "0x" + q
+        trans_result["txid"] = c
+        trans_result["trans_input"] = self.ipt.show_transinput()
+        trans_result["trans_output"] = self.opt.show_transoutput()
+        trans_result["length"] = self.length
+        return trans_result
 
 
 class Attachment:
@@ -281,6 +345,64 @@ class Block:
         block.b = b
         return block
 
+    def show_block(self) -> dict:
+        block_result = dict()
+        block_result["index"] = self.index
+        block_result["timestamp"] = self.timestamp
+        block_result["nonce"] = self.nonce
+        # convert previous_hash to hexadecimal
+        temp = ""
+        for i, index in enumerate(self.previous_hash):
+            a = str(hex(self.previous_hash[i]))[2:]
+            temp += a.zfill(2)
+        c = "0x" + temp
+        block_result["previous_hash"] = c
+        # convert hash to hexadecimal
+        temp = ""
+        for i, index in enumerate(self.hash):
+            a = str(hex(self.hash[i]))[2:]
+            temp += a.zfill(2)
+        c = "0x" + temp
+        block_result["hash"] = c
+        length = len(self.data.trans)
+        result = []
+        for i in range(length):
+            result.append(self.data.trans[i].show_trans())
+        block_result["data"] = {"transaction": result, "attachment": str(self.data.attachment.content, \
+                                                                         encoding="utf-8")}
+        info = """Block-info:
+        index:         %d
+        timestamp:     %f
+        nonce:         %d
+        previous_hash: %s
+        hash:          %s
+        data:""" % (block_result["index"], block_result["timestamp"], block_result["nonce"], \
+                       block_result["previous_hash"], block_result["hash"])
+        print(info)
+        for i in range(len(self.data.trans)):
+            info = """        transaction:
+              trans%d:
+                 public_key:  %s
+                 signature:   %s
+                 version:     %d
+                 timestamp:   %f
+                 txid:        %s
+                 input:
+                      public_key_hash:  %s
+                      content:          %s
+                 output:
+                      content:          %s
+                 length:                %d
+                 attachment:            %s
+            """ % (i, block_result["data"]["transaction"][i]["public_key"], block_result["data"]["transaction"]\
+                [i]["signature"], block_result["data"]["transaction"][i]["version"], block_result["data"]\
+                ["transaction"][i]["timestamp"], block_result["data"]["transaction"][i]["txid"], block_result["data"]\
+                ["transaction"][i]["trans_input"]["public_key_hash"], block_result["data"]["transaction"][i]["trans_input"]\
+                ["content"], block_result["data"]["transaction"][i]["trans_output"]["content"],\
+                   block_result["data"]["transaction"][i]["length"], block_result["data"]["attachment"])
+            print(info)
+        return block_result
+
 
 class UTXOTable:
     """
@@ -345,7 +467,6 @@ class UTXOTable:
                 return self.info(utxo, block=False)['amount'] == amount\
                        and self.info(utxo, block=False)['to'] == receiver
         return False
-
 
 
 class Blockchain:
@@ -511,7 +632,6 @@ class TransPool:
             return True
         else:
             return False
-
 
     def retrieve(self, num: int) -> List[Transaction]:
         """
@@ -682,3 +802,19 @@ class Verify:
         pass
 
 
+block = Block.unpack(b'G\xfdk\x88\xda5\xff\x8c\x97t\x9f\xcb\xe0\xa8\x07S\x8b9t:.9\x1d\xee\xf4\xb1\xda\xd1r\xaf'
+                             b'\xfcu\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+                             b'\x99\x01\x00\x00O\x1e,-\xe1\xa0!\x16D\x87\xcc\x923\xf7\xf6\xca\xad\xd1\t\x8eV\xdc\xe8t}N'
+                             b'\xfa\x8af\xbe\xe7\xef\x01\x00\x00\x00\x89\x92N\xd8h\xb5\xd6A\xae\x00\x00\x00D\x00\x00'
+                             b'\x00(\x00\x00\x00-----BEGIN PUBLIC KEY-----\nMFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAE7G2oklVAO7P'
+                             b'mkOwFKyoRLRZijrrlErST\neOrOEcxOUHG1ywjGYLLTWV1vvGl6rdL0wxwsqhl4c3uMqWHHA8sYXg==\n-----EN'
+                             b'D PUBLIC KEY-----\n\xbe\x0e\xa2U\xd6\xc9\xa6\xd6C\xe0\x06\xf5{\x89^4\x1b\xb3\x95z\x04}'
+                             b'\xc1\xf8]\xe3\xc6\x82\xdc\xb1\x90E\x00\x00\x00\x00\xbe\x0e\xa2U\xd6\xc9\xa6\xd6C\xe0\x06'
+                             b'\xf5{\x89^4\x1b\xb3\x95z\x04}\xc1\xf8]\xe3\xc6\x82\xdc\xb1\x90E\x00\x00\x00\x00\x00'
+                             b'\x00E@\x8b\x8dZ\x80\xde\x82k\xe1>0F\xf4\xbbh\x93\x04\xef\x8e\x9b\xe2\xb2\xd9\xe1\x9c\x80'
+                             b'\x10H\xb6\xa1\xfd\x02\xbf0E\x02!\x00\xfa\xff2\x10\x08\x18\xce~\x10\xb3\xe5\xc7y\xfd]\xd4'
+                             b'\x13tj\x9bx\n3-\xef\xe5\t\xe3\xd6R+\x16\x02 \x17L\x07\xb5E c\xc8\xf5l\xc7\xc1\xa7BM'
+                             b'\xbb0Y/\x9b\x89\xb0a_9\x0bi\xe2*\x0b\xda\xf9\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+                             b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00')
+
+print(block.show_block())

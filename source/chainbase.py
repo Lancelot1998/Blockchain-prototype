@@ -75,16 +75,12 @@ class ChainMsgHandler(socketserver.StreamRequestHandler):
         elif msgtype == MsgType.TYPE_BLOCK_READ:  # send back blocks whose indexes locate in [start, end]
             start = bin2int(content[:4])
             end = bin2int(content[4:8])
-
             # do the search
-
-
+            result = []
+            for i in range(start, end):
+                result.append(self.server.blockchain.chain.queue[i].b)
             # send back result
-
-            # self.request.sendall(
-            #     send_handler(msgtype.TYPE_RESPONSE_OK,
-            #                  batch_handler())
-            # )
+            self.request.sendall(send_handler(msgtype.TYPE_RESPONSE_OK,batch_handler(result)))
 
 
 class ChainBaseServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):

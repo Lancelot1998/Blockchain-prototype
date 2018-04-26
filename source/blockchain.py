@@ -175,6 +175,12 @@ class Transaction:
 
         return transaction
 
+    def dictionary(self) -> dict:
+        result = dict()
+        result['version'] = self.version
+        # ....
+
+        return result
 
 class Attachment:
 

@@ -28,6 +28,8 @@ class MsgType(Enum):
     TYPE_BLOCK_PREVIOUS_HASH = struct.pack('=i', 13)
     TYPE_TRANS_SEARCH_TXID = struct.pack('=i', 14)
     TYPE_BLOCK_READ = struct.pack('=i', 15)
+    TYPE_NEW_BLOCK = struct.pack('=i', 16)
+    TYPE_NODE_DISCOVER = struct.pack('=i', 17)
 
 
 def b_block_pack(block: bytes) -> List[bytes]:
@@ -105,7 +107,7 @@ class PeerManager:
     def __init__(self):
         pass
 
-    def add_peer(self, ip):
+    def peer_discover(self, ip):
         pass
 
     def sendall(self, msgtype: MsgType, content: bytes):

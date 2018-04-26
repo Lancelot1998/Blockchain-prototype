@@ -381,7 +381,7 @@ class Block:
         print(info)
         for i in range(len(self.data.trans)):
             info = """        transaction:
-              trans%d:
+              trans[%d]:
                  public_key:  %s
                  signature:   %s
                  version:     %d
@@ -817,4 +817,4 @@ block = Block.unpack(b'G\xfdk\x88\xda5\xff\x8c\x97t\x9f\xcb\xe0\xa8\x07S\x8b9t:.
                              b'\xbb0Y/\x9b\x89\xb0a_9\x0bi\xe2*\x0b\xda\xf9\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
                              b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00')
 
-print(block.show_block())
+print("the dictionary of the result = ", block.show_block())

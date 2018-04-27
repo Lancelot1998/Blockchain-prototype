@@ -53,7 +53,7 @@ class ChainMsgHandler(socketserver.StreamRequestHandler):
             try:
                 block = Block.unpack(content)
             except Exception:
-                self.request.sendall(send_handler(MsgType.TYPE_RESPONSE_ERROR, b''))
+                self.request.sendall(send_handler(MsgType.TYPE_RESPONSE_ERROR, b'block unpack error'))
             else:
                 result = self.server.blockchain.add_block(block)
                 if result:

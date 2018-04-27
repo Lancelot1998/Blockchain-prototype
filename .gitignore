@@ -1,6 +1,0 @@
-.idea/*
-venv/*
-test/__pycache__/*
-test/.cache/*
-source/__pycache__/*
-.gitignore

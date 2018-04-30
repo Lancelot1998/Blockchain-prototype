@@ -32,6 +32,7 @@ class MsgType(Enum):
     TYPE_NODE_DISCOVER = struct.pack('=i', 17)
 
 
+
 def b_block_pack(block: bytes) -> List[bytes]:
     p = len(block) % PIECE
     packages = n_bytes(block[:-p], PIECE)

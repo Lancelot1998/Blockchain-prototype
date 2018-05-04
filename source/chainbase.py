@@ -24,63 +24,87 @@ class ChainMsgHandler(socketserver.StreamRequestHandler):
         handle messages from webchain and conchain
         :return: None
         """
-        header, length, msgtype, content = recv_parser(self.request)
 
-        if msgtype == MsgType.TYPE_TRANS_WRITE:  # write the submitted transaction to the transpool
-            result = self.server.transpool.add(content)
-            if result:
-                self.request.sendall(send_handler(MsgType.TYPE_RESPONSE_OK, b''))
-            else:
-                self.request.sendall(send_handler(MsgType.TYPE_RESPONSE_ERROR, b''))
+        handlers = {
+            # write the submitted transaction to the transpool
+            MsgType.TYPE_TRANS_WRITE: self.processor_trans_write,
 
-        # elif msgtype == MsgType.TYPE_TRANS_RETRIEVE:  # provide transactions in the transpool (for consensus)
-        #     self.request.sendall(
-        #         send_handler(MsgType.TYPE_RESPONSE_OK,
-        #                      batch_handler(self.server.transpool.retrieve_serialized(bin2int(content))))
-        #     )
+            # provide transactions in the transpool
+            MsgType.TYPE_TRANS_READ: self.processor_trans_read,
 
-        elif msgtype == MsgType.TYPE_TRANS_READ:  # provide transactions in the transpool
-            result = self.server.transpool.read_serialized()
-            if len(result) > 0:
-                self.request.sendall(
-                    send_handler(MsgType.TYPE_RESPONSE_OK, batch_handler(result))
-                )
-            else:
-                self.request.sendall(send_handler(MsgType.TYPE_RESPONSE_ERROR, b''))
-
-        elif msgtype == MsgType.TYPE_BLOCK_WRITE:
             # write the submitted block (the result of consensus) to the blockchain
-            try:
-                block = Block.unpack(content)
-            except Exception:
-                self.request.sendall(send_handler(MsgType.TYPE_RESPONSE_ERROR, b'block unpack error'))
+            MsgType.TYPE_BLOCK_WRITE: self.processor_block_write,
+
+            # search the transaction that has the given txid
+            MsgType.TYPE_TRANS_SEARCH_TXID: self.processor_trans_search_txid,
+
+            # return the previous hash for constructing nonce
+            MsgType.TYPE_BLOCK_PREVIOUS_HASH: self.processor_prev_hash,
+
+            # send back blocks whose indexes locate in [start, end]
+            MsgType.TYPE_BLOCK_READ: self.processor_block_read
+        }
+
+        *_, msgtype, content = recv_parser(self.request)
+
+        handlers[msgtype](content)
+
+
+    def processor_trans_write(self, content):
+        result = self.server.transpool.add(content)
+        if result:
+            _ = send_handler(MsgType.TYPE_RESPONSE_OK, b'')
+        else:
+            _ = send_handler(MsgType.TYPE_RESPONSE_ERROR, b'')
+
+        self.request.sendall(_)
+
+    def processor_trans_read(self, content):
+        result = self.server.transpool.read_serialized()
+        if len(result) > 0:
+            _ = send_handler(MsgType.TYPE_RESPONSE_OK, batch_handler(result))
+        else:
+            _ = send_handler(MsgType.TYPE_RESPONSE_ERROR, b'')
+
+        self.request.sendall(_)
+
+    def processor_block_write(self, content):
+        # todo: process transactions in the transpool
+        try:
+            block = Block.unpack(content)
+        except Exception:
+            _ = send_handler(MsgType.TYPE_RESPONSE_ERROR, b'block unpack error')
+        else:
+            result = self.server.blockchain.add_block(block)
+            if result:
+                _ = send_handler(MsgType.TYPE_RESPONSE_OK, b'')
             else:
-                result = self.server.blockchain.add_block(block)
-                if result:
-                    self.request.sendall(send_handler(MsgType.TYPE_RESPONSE_OK, b''))
-                else:
-                    self.request.sendall(send_handler(MsgType.TYPE_RESPONSE_ERROR, b''))
+                _ = send_handler(MsgType.TYPE_RESPONSE_ERROR, b'')
+        finally:
+            self.request.sendall(_)
 
-        elif msgtype == MsgType.TYPE_TRANS_SEARCH_TXID:  # search the transaction that has the given txid
-            try:
-                trans = self.server.blockchain.search_transaction(content)
-            except TransNotInChain:
-                self.request.sendall(send_handler(MsgType.TYPE_RESPONSE_ERROR, b''))
-            else:
-                self.request.sendall(send_handler(MsgType.TYPE_RESPONSE_OK, trans.b))
+    def processor_trans_search_txid(self, content):
+        try:
+            trans = self.server.blockchain.search_transaction(content)
+        except TransNotInChain:
+            _ = send_handler(MsgType.TYPE_RESPONSE_ERROR, b'')
+        else:
+            _ = send_handler(MsgType.TYPE_RESPONSE_OK, trans.b)
+        finally:
+            self.request.sendall(_)
 
-        elif msgtype == MsgType.TYPE_BLOCK_PREVIOUS_HASH:  # return the previous hash for constructing nonce
-            self.request.sendall(send_handler(MsgType.TYPE_RESPONSE_OK, self.server.blockchain.chain.queue[-1].hash))
+    def processor_prev_hash(self, content):
+        self.request.sendall(send_handler(MsgType.TYPE_RESPONSE_OK, self.server.blockchain.chain.queue[-1].hash))
 
-        elif msgtype == MsgType.TYPE_BLOCK_READ:  # send back blocks whose indexes locate in [start, end]
-            start = bin2int(content[:4])
-            end = bin2int(content[4:8])
-            # do the search
-            result = []
-            for i in range(start, end):
-                result.append(self.server.blockchain.chain.queue[i].b)
-            # send back result
-            self.request.sendall(send_handler(msgtype.TYPE_RESPONSE_OK,batch_handler(result)))
+    def processor_block_read(self, content):
+        start = bin2int(content[:4])
+        end = bin2int(content[4:8])
+        # do the search
+        result = []
+        for i in range(start, end):
+            result.append(self.server.blockchain.chain.queue[i].b)
+        # send back result
+        self.request.sendall(send_handler(MsgType.TYPE_RESPONSE_OK, batch_handler(result)))
 
 
 class ChainBaseServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):

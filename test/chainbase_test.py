@@ -24,7 +24,7 @@ from source.transfer import send_handler, batch_parser, MsgType, recv_parser
 class BlockChainTestCase(unittest.TestCase):
     def setUp(self):
         import random
-        self.address = (r'/tmp/chainbase0.6907788672920935')
+        self.address = (r'/tmp/chainbase0.16960505635486467')
 
     def test_000_trans_write(self):
         """

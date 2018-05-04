@@ -7,7 +7,7 @@
 
     :author: hank
 """
-from source.transfer import MsgType, PeerManager, recv_parser
+from source.transfer import MsgType, PeerManager, recv_parser, send_handler
 from source.blockchain import Transaction, Block
 
 from random import randrange, seed
@@ -15,6 +15,7 @@ import struct
 import hashlib
 from queue import Queue
 import socketserver
+import socket
 import concurrent.futures
 from multiprocessing import Value, Pool, Lock
 from functools import partial
@@ -23,12 +24,13 @@ from functools import partial
 MINE_TOP = 2 ** 32
 MINE_SWITCH = Value('i', 1)
 
+
 def mine(prev_hash, target):
     return PoWServer.mine(prev_hash, target)
 
 
 class PoWServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
-
+    
     def __init__(self, server_address, handler, chainbase_address):
         self.prev_hash = b''
         self.target = (2**232 - 1).to_bytes(32, byteorder='big')
@@ -52,7 +54,6 @@ class PoWServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
         ore = self.workers.apply_async(mine,
                                        args=(self.prev_hash, self.target),
                                        callback=partial(self.on_new_block_mined, self))
-        print(ore.get())
 
     @staticmethod
     def stop_miner():
@@ -76,7 +77,7 @@ class PoWServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
             block = self.make_block(nonce)  # mining stops because a nonce have been found
             self.peer.sendall(msgtype=MsgType.TYPE_NEW_BLOCK, content=block.b)
-            assert self.add_block(block.b) is True
+            assert self.add_block(block) is True
             self.prev_hash = block.hash
             self.start_miner()  # start a new miner
 
@@ -97,13 +98,17 @@ class PoWServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     def make_block(self, nonce) -> Block:
         pass
 
-    def add_block(self, block: bytes) -> bool:
+    def add_block(self, block: Block) -> bool:
         """
         add the block to the chainbase, if return value is OK, update prev_hash
         :param block: binary block
         :return: True | False
         """
-        print('a block added')
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            s.connect(self.chainbase_address)
+            s.sendall(send_handler(MsgType.TYPE_BLOCK_WRITE, block.b))
+            *_, msgtype, content = recv_parser(s)
+        return msgtype == MsgType.TYPE_RESPONSE_OK
 
     @staticmethod
     def __keep_mining() -> bool:

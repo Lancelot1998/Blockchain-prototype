@@ -77,6 +77,7 @@ class ChainMsgHandler(socketserver.StreamRequestHandler):
         else:
             result = self.server.blockchain.add_block(block)
             if result:
+                self.server.transpool.remove(block)
                 _ = send_handler(MsgType.TYPE_RESPONSE_OK, b'')
             else:
                 _ = send_handler(MsgType.TYPE_RESPONSE_ERROR, b'')

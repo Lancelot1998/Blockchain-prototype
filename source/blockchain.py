@@ -553,7 +553,7 @@ class Blockchain:
             self.utxo.add(trans)
 
         # coinbase
-        self.utxo.ad(block.data.trans[0])
+        self.utxo.add(block.data.trans[0])
 
         self.chain.put(block)
         return True
@@ -677,6 +677,16 @@ class TransPool:
         :return: a list of binary transactions
         """
         return [trans.b for trans in self.read()]
+
+    def remove(self, block: Block):
+        """
+        remove all transactions in the pool when the new block comes
+        todo :remove the transactions that the new block contains in this pool
+        :param block: the new block (currently make no snese)
+        :return: None
+        """
+        self.ipt = []
+        self.trans = queue.Queue()
 
 
 class Verify:

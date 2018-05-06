@@ -7,8 +7,8 @@
 
     :author: hank
 """
-from source.transfer import MsgType, PeerManager, recv_parser, send_handler
-from source.blockchain import Transaction, Block
+from source.transfer import MsgType, PeerManager, recv_parser, send_handler, batch_handler, batch_parser
+from source.blockchain import Transaction, Block, Attachment, BlockData
 
 from random import randrange, seed
 import struct
@@ -19,6 +19,8 @@ import socket
 import concurrent.futures
 from multiprocessing import Value, Pool, Lock
 from functools import partial
+from typing import List
+import time
 
 
 MINE_TOP = 2 ** 32
@@ -31,7 +33,8 @@ def mine(prev_hash, target):
 
 class PoWServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     
-    def __init__(self, server_address, handler, chainbase_address):
+    def __init__(self, server_name: str, server_address, handler, chainbase_address):
+        self.name = server_name
         self.prev_hash = b''
         self.target = (2**232 - 1).to_bytes(32, byteorder='big')
         self.chainbase_address = chainbase_address
@@ -96,11 +99,22 @@ class PoWServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
         pass
 
     def make_block(self, nonce) -> Block:
-        pass
+        trans = self.__get_trans()
+
+        info = Attachment()
+        info.add_data(self.name.encode())
+        info.ready()
+
+        block = Block(0,  # todo: get index
+                      timestamp=time.time(),
+                      blockdata=BlockData(trans, info),
+                      previous_hash=self.prev_hash,
+                      nonce=nonce)
+        return block
 
     def add_block(self, block: Block) -> bool:
         """
-        add the block to the chainbase, if return value is OK, update prev_hash
+        add the block to the chainbase
         :param block: binary block
         :return: True | False
         """
@@ -123,6 +137,21 @@ class PoWServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
             MINE_SWITCH.value = 1
         else:
             MINE_SWITCH.value = 0
+
+    def __get_trans(self) -> List[Transaction]:
+        # self.chainbase_address
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            s.connect(self.chainbase_address)
+            s.sendall(send_handler(MsgType.TYPE_TRANS_READ, b''))
+            *_, msgtype, content = recv_parser(s)
+
+            trans = []  # todo: the first transaction should reward the miner,
+                        # todo: the server may have a property named owner_address
+            if msgtype == MsgType.TYPE_RESPONSE_OK:
+                trans += batch_parser(content)
+
+            return trans
+
 
 
 
@@ -189,5 +218,5 @@ if __name__ == '__main__':
     address = ('localhost', 23333)
     chainbase_address = r''
 
-    with PoWServer(address, PowHandler, chainbase_address) as server:
+    with PoWServer('node_0', address, PowHandler, chainbase_address) as server:
         server.serve_forever()

@@ -4,7 +4,7 @@ from source.blockchain import Transaction, BLENGTH_INT
 import struct
 from functools import reduce
 from enum import Enum, unique
-
+import socket
 
 PIECE = 4096
 LENGTH_HEADER = 64  # 4 len + 4 type + 56 blank(if heartbeat or PBFT, these are content)
@@ -106,10 +106,14 @@ def recv_content(length: int, request) -> bytes:
 
 class PeerManager:
     def __init__(self):
-        pass
+        self.peers = []
 
-    def peer_discover(self, ip):
-        pass
+    def peer_discover(self, address: Tuple[str, int]):
+        self.peers.append(address)
 
-    def sendall(self, msgtype: MsgType, content: bytes):
-        pass
+    def sendall_block(self, msgtype: MsgType, content: bytes):
+        for p in self.peers:
+
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect(p)
+                s.sendall(send_handler(msgtype, content))

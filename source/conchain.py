@@ -23,7 +23,7 @@ from typing import List
 import time
 
 
-MINE_TOP = 2 ** 32
+MINE_TOP = 2 ** 31
 MINE_SWITCH = Value('i', 1)
 
 
@@ -79,21 +79,36 @@ class PoWServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
                 return
 
             block = self.make_block(nonce)  # mining stops because a nonce have been found
-            self.peer.sendall(msgtype=MsgType.TYPE_NEW_BLOCK, content=block.b)
+
+            print('block mined:')
+            print(block.show_block())
+
+            self.peer.sendall_block(msgtype=MsgType.TYPE_NEW_BLOCK, content=block.b)
             assert self.add_block(block) is True
             self.prev_hash = block.hash
             self.start_miner()  # start a new miner
 
     def on_new_block_received(self, block):
+        print('block receiced')
+        block = Block.unpack(block)
         if self.add_block(block):
+            print('try to stop current miner')
             self.stop_miner()  # stop current miner
             self.prev_hash = block.hash
-
+            self.peer.sendall_block(msgtype=MsgType.TYPE_NEW_BLOCK, content=block.b)
+            print('try to start a new miner')
             self.start_miner()  # start a new miner
 
     def init_prev_hash(self):
         """get previous hash from chainbase when initializing"""
-        pass
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            s.connect(self.chainbase_address)
+            s.sendall(send_handler(MsgType.TYPE_BLOCK_PREVIOUS_HASH, b''))
+            *_, msgtype, content = recv_parser(s)
+
+            self.prev_hash = content
+            print('prev_hash = ', content)
+
 
     def init_target(self):
         pass
@@ -102,7 +117,7 @@ class PoWServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
         trans = self.__get_trans()
 
         info = Attachment()
-        info.add_data(self.name.encode())
+        info.add_data(b'mined by ' + self.name.encode())
         info.ready()
 
         block = Block(0,  # todo: get index
@@ -122,7 +137,12 @@ class PoWServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
             s.connect(self.chainbase_address)
             s.sendall(send_handler(MsgType.TYPE_BLOCK_WRITE, block.b))
             *_, msgtype, content = recv_parser(s)
+
+            print('result of adding block', content)
         return msgtype == MsgType.TYPE_RESPONSE_OK
+
+    def acquire_block(self):
+        pass
 
     @staticmethod
     def __keep_mining() -> bool:
@@ -150,7 +170,7 @@ class PoWServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
             if msgtype == MsgType.TYPE_RESPONSE_OK:
                 trans += batch_parser(content)
 
-            return trans
+            return [Transaction.unpack(t) for t in trans]
 
 
 
@@ -170,7 +190,7 @@ class PoWServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
         for nonce in range(initial, MINE_TOP):
             if not PoWServer.__keep_mining():
-
+                print('stop mining')
                 return prev_hash, target, -1
             hash_ = PoWServer.__calc_hash(prev_hash, nonce)
 
@@ -179,7 +199,7 @@ class PoWServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
         for nonce in range(0, initial):
             if not PoWServer.__keep_mining():
-
+                print('stop mining')
                 return prev_hash, target, -1
             hash_ = PoWServer.__calc_hash(prev_hash, nonce)
 
@@ -201,22 +221,27 @@ class PoWServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
 class PowHandler(socketserver.StreamRequestHandler):
     def handle(self):
-        header, length, msgtype, content = recv_parser(self.request)
 
-        if msgtype == MsgType.TYPE_NEW_BLOCK:
-            self.server.on_new_block_received(content)
+        handlers = {
+            MsgType.TYPE_NEW_BLOCK: self.server.on_new_block_received,
 
-        elif msgtype == MsgType.TYPE_BLOCK_READ:
-            self.server.acquire_block(content)
+            MsgType.TYPE_BLOCK_READ: self.server.acquire_block,
 
-        elif msgtype == MsgType.TYPE_NODE_DISCOVER:
-            pass
+            MsgType.TYPE_NODE_DISCOVER: self.server.peer.peer_discover
+        }
+
+        *_, msgtype, content = recv_parser(self.request)
+
+        handlers[msgtype](content)
+
+
 
 
 if __name__ == '__main__':
     import random
     address = ('localhost', 23333)
-    chainbase_address = r''
+    chainbase_address = r'/tmp/chainbase0.7588750477650897'
 
     with PoWServer('node_0', address, PowHandler, chainbase_address) as server:
+        server.peer.peer_discover(('localhost', 23334))
         server.serve_forever()

@@ -24,7 +24,7 @@ from source.transfer import send_handler, batch_parser, MsgType, recv_parser
 class BlockChainTestCase(unittest.TestCase):
     def setUp(self):
         import random
-        self.address = (r'/tmp/chainbase0.16960505635486467')
+        self.address = (r'/tmp/chainbase0.2968406540984335')
 
     def test_000_trans_write(self):
         """
@@ -99,7 +99,7 @@ class BlockChainTestCase(unittest.TestCase):
             self.assertEqual(msgtype, MsgType.TYPE_RESPONSE_ERROR)  # the chainbase returns ERROR
 
         """
-        construct a second valid transaction, which pay 7 from random address 1 to random address 2 
+        construct a second valid transaction, which pay 7 from random address 1 to random address 2
         """
         private_key = private_keys[0]
         public_key = public_keys[0]

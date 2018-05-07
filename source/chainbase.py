@@ -69,7 +69,6 @@ class ChainMsgHandler(socketserver.StreamRequestHandler):
         self.request.sendall(_)
 
     def processor_block_write(self, content):
-        # todo: process transactions in the transpool
         try:
             block = Block.unpack(content)
         except Exception:

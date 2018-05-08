@@ -116,8 +116,8 @@ class ChainBaseServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer
 
 
 if __name__ == '__main__':
-    import random
-    address = (r'/tmp/chainbase'+str(random.random()))
+    import sys
+    address = sys.argv[1]
     print(address)
     with ChainBaseServer(address, ChainMsgHandler) as server:
         server.serve_forever()

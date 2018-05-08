@@ -91,5 +91,6 @@ def block():
 
 
 if __name__ == "__main__":
-    chainbase_address = r'/tmp/chainbase0.7588750477650897'
-    app.run(port=5000)
+    import sys
+    chainbase_address = sys.argv[1]
+    app.run(port=int(sys.argv[2]))

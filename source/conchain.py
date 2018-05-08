@@ -36,7 +36,7 @@ class PoWServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     def __init__(self, server_name: str, server_address, handler, chainbase_address):
         self.name = server_name
         self.prev_hash = b''
-        self.target = (2**232 - 1).to_bytes(32, byteorder='big')
+        self.target = (2**234 - 1).to_bytes(32, byteorder='big')
         self.chainbase_address = chainbase_address
         self.peer = PeerManager()
         self.workers = Pool()
@@ -238,10 +238,11 @@ class PowHandler(socketserver.StreamRequestHandler):
 
 
 if __name__ == '__main__':
-    import random
-    address = ('localhost', 23333)
-    chainbase_address = r'/tmp/chainbase0.7588750477650897'
+    import sys
 
-    with PoWServer('node_0', address, PowHandler, chainbase_address) as server:
-        server.peer.peer_discover(('localhost', 23334))
+    address = ('localhost', int(sys.argv[2]))
+    chainbase_address = sys.argv[1]
+
+    with PoWServer(sys.argv[4], address, PowHandler, chainbase_address) as server:
+        server.peer.peer_discover(('localhost', int(sys.argv[3])))
         server.serve_forever()

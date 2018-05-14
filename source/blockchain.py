@@ -62,8 +62,8 @@ class TransInput:
     def show_input(self):
         result = {}
         result["public_key_hash"] = self.public_key_hash
-        result["content"] = self.content
-        print(result)
+        # result["content"] = self.content
+        result['content'] = [{'txid': i, 'index': j} for i,j in self.content]
 
     @classmethod
     def unpack(cls, b: bytes) -> 'TransInput':
@@ -80,7 +80,7 @@ class TransInput:
         for i, index in enumerate(self.public_key_hash):
             a = str(hex(self.public_key_hash[i]))[2:]
             temp += a.zfill(2)
-        c = "0x" + temp
+        c = temp
         transinput_result["public_key_hash"] = c
         # convert TXID to hexadecimal
         result = []
@@ -89,9 +89,9 @@ class TransInput:
             for d, k in enumerate(self.content[i][0]):
                 a = str(hex(self.content[i][0][d]))[2:]
                 temp += a.zfill(2)
-            c = "0x" + temp
+            c = temp
             result.append((c, self.content[i][1]))
-        transinput_result["content"] = result
+        transinput_result["content"] = [{'txid': i, 'index': j} for i,j in result]
         return transinput_result
 
 
@@ -387,7 +387,7 @@ class Block:
         hash:          %s
         data:""" % (block_result["index"], block_result["timestamp"], block_result["nonce"], \
                        block_result["previous_hash"], block_result["hash"])
-        print(info)
+        #print(info)
         for i in range(len(self.data.trans)):
             info = """        transaction:
               trans[%d]:
@@ -409,7 +409,7 @@ class Block:
                 ["transaction"][i]["trans_input"]["public_key_hash"], block_result["data"]["transaction"][i]["trans_input"]\
                 ["content"], block_result["data"]["transaction"][i]["trans_output"]["content"],\
                    block_result["data"]["transaction"][i]["length"], block_result["data"]["attachment"])
-            print(info)
+            #print(info)
         return block_result
 
 
@@ -548,12 +548,12 @@ class Blockchain:
             return False
 
         # update the UTXO table
-        for trans in block.data.trans[1:]:
+        for trans in block.data.trans:
             self.utxo.delete(trans)
             self.utxo.add(trans)
 
         # coinbase
-        self.utxo.add(block.data.trans[0])
+        # self.utxo.add(block.data.trans[0])
 
         self.chain.put(block)
         return True
@@ -627,10 +627,19 @@ class TransPool:
         and add the condition 3
         """
 
-        if Verify.sig_checker(transaction)\
-            and Verify.double_spend_checker([self.utxo, self.chain.utxo], transaction)\
-            and Verify.transpool_double_spend_checker(self.ipt, transaction)\
-            and Verify.balance_checker([self.utxo, self.chain.utxo], transaction):
+        validation = [
+            Verify.sig_checker(transaction),
+            Verify.double_spend_checker([self.utxo, self.chain.utxo], transaction),
+            Verify.transpool_double_spend_checker(self.ipt, transaction),
+            Verify.balance_checker([self.utxo, self.chain.utxo], transaction)
+        ]
+
+        print(validation)
+
+        if validation[0]\
+            and validation[1]\
+            and validation[2]\
+            and validation[3]:
 
             self.utxo.add(transaction)  # add all outputs in transaction to the UTXO table of transpool
 
@@ -687,6 +696,7 @@ class TransPool:
         """
         self.ipt = []
         self.trans = queue.Queue()
+        self.utxo = UTXOTable()
 
 
 class Verify:
@@ -759,7 +769,8 @@ class Verify:
                                     struct.pack('=f', trans.timestamp) + trans.ipt.b + trans.opt.b,
                                     ec.ECDSA(hashes.SHA256()))
         except(Exception):
-            pass
+            print('sig')
+            return False
         else:
             return True
 
@@ -781,18 +792,21 @@ class Verify:
         amount = 0
 
         if public_key_hash != trans.ipt.public_key_hash:
+            print('error 1')
             return False
 
         for i in trans.ipt.content:
             for table in utxo_tables:
                 if table.exist(i):
                     if not table.info(i)['to'] == trans.ipt.public_key_hash:  # check if the UTXO is to this pubkey hash
+                        print('error 2')
                         return False
                     amount += table.info(i)['amount']  # get the amount of UTXO
 
         for opt in trans.opt.content:
             amount -= opt[0]
         if amount != 0:  # inputs and outputs are imbalance
+            print('error 3, amount=', amount)
             return False
 
         return True

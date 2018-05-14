@@ -215,8 +215,8 @@ class PowHandler(socketserver.StreamRequestHandler):
 
 if __name__ == '__main__':
     import random
-    address = ('localhost', 23333)
-    chainbase_address = r''
+    address = ('localhost', 23334)
+    chainbase_address = r'/tmp/chainbase0.02073603007173308'
 
     with PoWServer('node_0', address, PowHandler, chainbase_address) as server:
         server.serve_forever()

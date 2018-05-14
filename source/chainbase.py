@@ -49,7 +49,6 @@ class ChainMsgHandler(socketserver.StreamRequestHandler):
 
         handlers[msgtype](content)
 
-
     def processor_trans_write(self, content):
         result = self.server.transpool.add(content)
         if result:

@@ -8,3 +8,4 @@ def n_bytes(b: bytes, n: int) -> List[bytes]:
 
 def bin2int(bin: bytes) -> int:
     return struct.unpack('=i', bin)[0]
+

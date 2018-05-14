@@ -402,7 +402,7 @@ class Block:
                  output:
                       content:          %s
                  length:                %d
-                 attachment:            %s
+        attachment:            %s
             """ % (i, block_result["data"]["transaction"][i]["public_key"], block_result["data"]["transaction"]\
                 [i]["signature"], block_result["data"]["transaction"][i]["version"], block_result["data"]\
                 ["transaction"][i]["timestamp"], block_result["data"]["transaction"][i]["txid"], block_result["data"]\
@@ -820,20 +820,53 @@ class Verify:
     def blockdata_checker(b: bytes):
         pass
 
-#
-# block = Block.unpack(b'G\xfdk\x88\xda5\xff\x8c\x97t\x9f\xcb\xe0\xa8\x07S\x8b9t:.9\x1d\xee\xf4\xb1\xda\xd1r\xaf'
-#                              b'\xfcu\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-#                              b'\x99\x01\x00\x00O\x1e,-\xe1\xa0!\x16D\x87\xcc\x923\xf7\xf6\xca\xad\xd1\t\x8eV\xdc\xe8t}N'
-#                              b'\xfa\x8af\xbe\xe7\xef\x01\x00\x00\x00\x89\x92N\xd8h\xb5\xd6A\xae\x00\x00\x00D\x00\x00'
-#                              b'\x00(\x00\x00\x00-----BEGIN PUBLIC KEY-----\nMFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAE7G2oklVAO7P'
-#                              b'mkOwFKyoRLRZijrrlErST\neOrOEcxOUHG1ywjGYLLTWV1vvGl6rdL0wxwsqhl4c3uMqWHHA8sYXg==\n-----EN'
-#                              b'D PUBLIC KEY-----\n\xbe\x0e\xa2U\xd6\xc9\xa6\xd6C\xe0\x06\xf5{\x89^4\x1b\xb3\x95z\x04}'
-#                              b'\xc1\xf8]\xe3\xc6\x82\xdc\xb1\x90E\x00\x00\x00\x00\xbe\x0e\xa2U\xd6\xc9\xa6\xd6C\xe0\x06'
-#                              b'\xf5{\x89^4\x1b\xb3\x95z\x04}\xc1\xf8]\xe3\xc6\x82\xdc\xb1\x90E\x00\x00\x00\x00\x00'
-#                              b'\x00E@\x8b\x8dZ\x80\xde\x82k\xe1>0F\xf4\xbbh\x93\x04\xef\x8e\x9b\xe2\xb2\xd9\xe1\x9c\x80'
-#                              b'\x10H\xb6\xa1\xfd\x02\xbf0E\x02!\x00\xfa\xff2\x10\x08\x18\xce~\x10\xb3\xe5\xc7y\xfd]\xd4'
-#                              b'\x13tj\x9bx\n3-\xef\xe5\t\xe3\xd6R+\x16\x02 \x17L\x07\xb5E c\xc8\xf5l\xc7\xc1\xa7BM'
-#                              b'\xbb0Y/\x9b\x89\xb0a_9\x0bi\xe2*\x0b\xda\xf9\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-#                              b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00')
-#
+
+block = Block.unpack(b'G\xfdk\x88\xda5\xff\x8c\x97t\x9f\xcb\xe0\xa8\x07S\x8b9t:.9\x1d\xee\xf4\xb1\xda\xd1r\xaf'
+                             b'\xfcu\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+                             b'\x99\x01\x00\x00O\x1e,-\xe1\xa0!\x16D\x87\xcc\x923\xf7\xf6\xca\xad\xd1\t\x8eV\xdc\xe8t}N'
+                             b'\xfa\x8af\xbe\xe7\xef\x01\x00\x00\x00\x89\x92N\xd8h\xb5\xd6A\xae\x00\x00\x00D\x00\x00'
+                             b'\x00(\x00\x00\x00-----BEGIN PUBLIC KEY-----\nMFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAE7G2oklVAO7P'
+                             b'mkOwFKyoRLRZijrrlErST\neOrOEcxOUHG1ywjGYLLTWV1vvGl6rdL0wxwsqhl4c3uMqWHHA8sYXg==\n-----EN'
+                             b'D PUBLIC KEY-----\n\xbe\x0e\xa2U\xd6\xc9\xa6\xd6C\xe0\x06\xf5{\x89^4\x1b\xb3\x95z\x04}'
+                             b'\xc1\xf8]\xe3\xc6\x82\xdc\xb1\x90E\x00\x00\x00\x00\xbe\x0e\xa2U\xd6\xc9\xa6\xd6C\xe0\x06'
+                             b'\xf5{\x89^4\x1b\xb3\x95z\x04}\xc1\xf8]\xe3\xc6\x82\xdc\xb1\x90E\x00\x00\x00\x00\x00'
+                             b'\x00E@\x8b\x8dZ\x80\xde\x82k\xe1>0F\xf4\xbbh\x93\x04\xef\x8e\x9b\xe2\xb2\xd9\xe1\x9c\x80'
+                             b'\x10H\xb6\xa1\xfd\x02\xbf0E\x02!\x00\xfa\xff2\x10\x08\x18\xce~\x10\xb3\xe5\xc7y\xfd]\xd4'
+                             b'\x13tj\x9bx\n3-\xef\xe5\t\xe3\xd6R+\x16\x02 \x17L\x07\xb5E c\xc8\xf5l\xc7\xc1\xa7BM'
+                             b'\xbb0Y/\x9b\x89\xb0a_9\x0bi\xe2*\x0b\xda\xf9\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+                             b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00')
+
 # print("the dictionary of the result = ", block.show_block())
+# PIECE = 4096
+# p = len(block.b) % PIECE
+# packages = n_bytes(block.b[:-p], PIECE)
+# packages.append(block.b[-p:])
+# print(packages)
+# print(block.b)# b_block_pack method put the bytecode of a block into a list
+# print(len(block.b), p)
+batch1 = b'G\xfdk\x88\xda5\xff\x8c'
+# print(batch1[:-1])
+# print(batch1[-1:])
+# print(len(batch1))
+# print(struct.unpack("i", batch1[0:4]))
+result = []
+i = 0
+# print(len(batch1))
+# while i < len(batch1):
+#     l = struct.unpack('=i', batch1[i:i+4])[0]
+#     i = i + l + 4
+#     result.append(batch1[i-l:i])
+# print(struct.unpack('=i', batch1[0:0+4])[0])
+# print(block.previous_hash)
+# print(struct.unpack("8i", block.previous_hash))
+# print(batch1[0:4])
+
+# batch = [b'G\xfdk\x88\xda5\xff\x8c\x97t\x9f', b'\x8c\x97t\x9f\xcb\xe0\xa8\x07S', b'\x77\x00\x34']
+# length = [struct.pack('=i', len(individual)) for individual in batch]
+# print(length)
+# for i in range(len(length)):
+#     print(struct.unpack("=i", length[i]))
+#
+# print(reduce(lambda x, y: x + y, [l + c for l, c in zip(length, batch)]))
+# for l, c in zip(length, batch):
+#     print(l, "ok\n", c)

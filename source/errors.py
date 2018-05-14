@@ -31,3 +31,4 @@ class ModificationAfterReady(BlockchainError):
 
 class PreviousBlockHashError(BlockchainError):
     pass
+

@@ -10,6 +10,7 @@ PIECE = 4096
 LENGTH_HEADER = 64  # 4 len + 4 type + 56 blank(if heartbeat or PBFT, these are content)
 LENGTH_TYPE = 4
 
+
 @unique
 class MsgType(Enum):
     TYPE_NORMAL = struct.pack('=i', 0)
@@ -32,12 +33,12 @@ class MsgType(Enum):
     TYPE_NODE_DISCOVER = struct.pack('=i', 17)
 
 
-
 def b_block_pack(block: bytes) -> List[bytes]:
     p = len(block) % PIECE
     packages = n_bytes(block[:-p], PIECE)
     packages.append(block[-p:])
     return packages
+
 
 def batch_handler(batch: List) -> bytes:
     """
@@ -47,6 +48,7 @@ def batch_handler(batch: List) -> bytes:
     """
     length = [struct.pack('=i', len(individual)) for individual in batch]
     return reduce(lambda x, y: x + y, [l + c for l, c in zip(length, batch)])
+
 
 def batch_parser(batch: bytes) -> List:
     """
@@ -70,7 +72,7 @@ def send_handler(type: MsgType, content) -> bytes:
     :param content: binary content
     :return: packed content can be send directly
     """
-    payload =  b''.join((struct.pack('=i', len(content)), type.value,
+    payload = b''.join((struct.pack('=i', len(content)), type.value,
                          bytes(LENGTH_HEADER - BLENGTH_INT - LENGTH_TYPE), content))
     return payload
 

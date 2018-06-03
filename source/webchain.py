@@ -92,5 +92,5 @@ def block():
 
 if __name__ == "__main__":
     import sys
-    chainbase_address = sys.argv[1]
-    app.run(port=int(sys.argv[2]))
+    chainbase_address = 'node1'
+    app.run(port=23391)

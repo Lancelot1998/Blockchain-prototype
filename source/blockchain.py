@@ -63,7 +63,7 @@ class TransInput:
         result = {}
         result["public_key_hash"] = self.public_key_hash
         # result["content"] = self.content
-        result['content'] = [{'txid': i, 'index': j} for i,j in self.content]
+        result['content'] = [{'txid': i, 'index': j} for i, j in self.content]
 
     @classmethod
     def unpack(cls, b: bytes) -> 'TransInput':
@@ -77,14 +77,14 @@ class TransInput:
         transinput_result = dict()
         # convert public_key_hash to hexadecimal
         temp = ""
-        for i, index in enumerate(self.public_key_hash):
+        for i, data in enumerate(self.public_key_hash):
             a = str(hex(self.public_key_hash[i]))[2:]
             temp += a.zfill(2)
         c = temp
         transinput_result["public_key_hash"] = c
         # convert TXID to hexadecimal
         result = []
-        for i, index in enumerate(self.content):
+        for i, data in enumerate(self.content):
             temp = ""
             for d, k in enumerate(self.content[i][0]):
                 a = str(hex(self.content[i][0][d]))[2:]
@@ -123,7 +123,7 @@ class TransOutput:
         transoutput_result = dict()
         result = []
         # convert PUBLIC_KEY_HASH to hexadecimal
-        for i, index in enumerate(self.content):
+        for i, data in enumerate(self.content):
             temp = ""
             for d, k in enumerate(self.content[i][1]):
                 a = str(hex(self.content[i][1][d]))[2:]
@@ -229,7 +229,7 @@ class Transaction:
                                          encoding="utf-8")
         # convert signature to hexadecimal
         q = ""
-        for i, index in enumerate(self.signature):
+        for i, data in enumerate(self.signature):
             a = str(hex(self.signature[i]))[2:]
             q += a.zfill(2)
         c = "0x" + q
@@ -238,7 +238,7 @@ class Transaction:
         trans_result["timestamp"] = self.timestamp
         # convert txid to hexadecimal
         q = ""
-        for i, index in enumerate(self.txid):
+        for i, data in enumerate(self.txid):
             a = str(hex(self.txid[i]))[2:]
             q += a.zfill(2)
         c = "0x" + q
@@ -361,14 +361,14 @@ class Block:
         block_result["nonce"] = self.nonce
         # convert previous_hash to hexadecimal
         temp = ""
-        for i, index in enumerate(self.previous_hash):
+        for i, data in enumerate(self.previous_hash):
             a = str(hex(self.previous_hash[i]))[2:]
             temp += a.zfill(2)
         c = "0x" + temp
         block_result["previous_hash"] = c
         # convert hash to hexadecimal
         temp = ""
-        for i, index in enumerate(self.hash):
+        for i, data in enumerate(self.hash):
             a = str(hex(self.hash[i]))[2:]
             temp += a.zfill(2)
         c = "0x" + temp
@@ -377,7 +377,7 @@ class Block:
         result = []
         for i in range(length):
             result.append(self.data.trans[i].show_trans())
-        block_result["data"] = {"transaction": result, "attachment": str(self.data.attachment.content, \
+        block_result["data"] = {"transaction": result, "attachment": str(self.data.attachment.content,
                                                                          encoding="utf-8")}
         info = """Block-info:
         index:         %d
@@ -385,9 +385,9 @@ class Block:
         nonce:         %d
         previous_hash: %s
         hash:          %s
-        data:""" % (block_result["index"], block_result["timestamp"], block_result["nonce"], \
-                       block_result["previous_hash"], block_result["hash"])
-        #print(info)
+        data:""" % (block_result["index"], block_result["timestamp"], block_result["nonce"],
+                    block_result["previous_hash"], block_result["hash"])
+        # print(info)
         for i in range(len(self.data.trans)):
             info = """        transaction:
               trans[%d]:
@@ -406,10 +406,10 @@ class Block:
             """ % (i, block_result["data"]["transaction"][i]["public_key"], block_result["data"]["transaction"]\
                 [i]["signature"], block_result["data"]["transaction"][i]["version"], block_result["data"]\
                 ["transaction"][i]["timestamp"], block_result["data"]["transaction"][i]["txid"], block_result["data"]\
-                ["transaction"][i]["trans_input"]["public_key_hash"], block_result["data"]["transaction"][i]["trans_input"]\
-                ["content"], block_result["data"]["transaction"][i]["trans_output"]["content"],\
-                   block_result["data"]["transaction"][i]["length"], block_result["data"]["attachment"])
-            #print(info)
+                ["transaction"][i]["trans_input"]["public_key_hash"], block_result["data"]["transaction"][i]\
+                ["trans_input"]["content"], block_result["data"]["transaction"][i]["trans_output"]["content"],\
+                block_result["data"]["transaction"][i]["length"], block_result["data"]["attachment"])
+            # print(info)
         return block_result
 
 
@@ -432,6 +432,16 @@ class UTXOTable:
                 self.utxo[(transaction.txid, index)] = {'amount': opt[0],
                                                         'to': opt[1]}
 
+    def add_two(self, transaction: Transaction, block: Block) -> None:
+        """
+        add all outputs of a transaction to the table
+        :param transaction: a transaction
+        :return: None
+        """
+        with self.mutex:
+            for index, opt in zip(range(len(transaction.opt.content)), transaction.opt.content):
+                self.utxo[(transaction.txid, index)] = ({'amount': opt[0], 'to': opt[1]}, block.hash)
+
     def exist(self, utxo: Tuple[bytes, int]) -> bool:
         """
         return if the utxo exists in the table
@@ -450,6 +460,23 @@ class UTXOTable:
         with self.mutex:
             for ipt in transaction.ipt.content:
                 del self.utxo[ipt]
+
+    def delete_two(self, transaction: Transaction) -> dict:
+        """
+        delete UTXOs that transaction referenced from the table
+        :param transaction: a transaction
+        :return: None
+        """
+        with self.mutex:
+            delete_result = dict()
+
+            for ipt in transaction.ipt.content:
+                if self.utxo[ipt][1] in delete_result:
+                    delete_result[self.utxo[ipt][1]] += 1
+                else:
+                    delete_result[self.utxo[ipt][1]] = 1
+                del self.utxo[ipt]
+            return delete_result
 
     def info(self, utxo: Tuple[bytes, int], block: bool = True) -> dict:
         """
@@ -519,7 +546,6 @@ class Blockchain:
         # print('trans', trans.txid)
         # print('block', block.b)
 
-
         # genesis block
         block = Block.unpack(b'G\xfdk\x88\xda5\xff\x8c\x97t\x9f\xcb\xe0\xa8\x07S\x8b9t:.9\x1d\xee\xf4\xb1\xda\xd1r\xaf'
                              b'\xfcu\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
@@ -538,25 +564,50 @@ class Blockchain:
 
         self.chain = queue.Queue()
         self.chain.put(block)
-
+        self.UTXO_num = dict()
         self.utxo = UTXOTable()
         for trans in block.data.trans:
             self.utxo.add(trans)
 
-    def add_block(self, block: Block) -> bool:
+        self.utxo_two = UTXOTable()
+        for trans in block.data.trans:
+            self.utxo_two.add_two(trans, block)
+            self.UTXO_num[block.hash] = 0
+            self.UTXO_num[block.hash] += len(trans.opt.content)
+
+    def add_block(self, block: Block):
         if not Verify.add_block_verifier(self, block):
             return False
-
+        result = []
         # update the UTXO table
         for trans in block.data.trans:
             self.utxo.delete(trans)
+            del_result = self.utxo_two.delete_two(trans)
+            for key in del_result.keys():
+                self.UTXO_num[key] -= del_result[key]  # key :block index
+                # if self.UTXO_num[key] == 0:
+                #     self.delete_block(key)  # delete the block whose index(recently hash) is key
+        for index, data in enumerate(self.chain.queue):
+            if self.UTXO_num[data.hash] == 0:
+                result.append(index)
+        for i in result:
+            self.chain.queue.remove(self.chain.queue[i])
+        self.UTXO_num[block.hash] = 0
+        for trans in block.data.trans:
             self.utxo.add(trans)
+            self.utxo_two.add_two(trans, block)
+            self.UTXO_num[block.hash] += len(trans.opt.content)
 
         # coinbase
         # self.utxo.add(block.data.trans[0])
 
         self.chain.put(block)
         return True
+
+    def delete_block(self, delete_key):
+        for block in self.chain.queue:
+            if block.hash == delete_key:
+                self.chain.queue.remove(block)
 
     def size(self) -> int:
         return self.chain.qsize()
@@ -691,7 +742,7 @@ class TransPool:
         """
         remove all transactions in the pool when the new block comes
         todo :remove the transactions that the new block contains in this pool
-        :param block: the new block (currently make no snese)
+        :param block: the new block (currently make no sense)
         :return: None
         """
         self.ipt = []
@@ -710,7 +761,6 @@ class Verify:
             return False
 
         # todo: nonce validation
-        # block.previous_hash + struct.pack('=i', block.nonce) < target
         # the above 'target' is a property of blockchain, should be calculated from the previous blocks.
 
         # to validate the transactions in the block
@@ -774,7 +824,6 @@ class Verify:
         else:
             return True
 
-
     @staticmethod
     def balance_checker(utxo_tables: List[UTXOTable], trans: Transaction) -> bool:
         """
@@ -811,8 +860,6 @@ class Verify:
 
         return True
 
-
-
     @staticmethod
     def trans_input_checker(b: bytes):
         pass
@@ -834,53 +881,3 @@ class Verify:
     def blockdata_checker(b: bytes):
         pass
 
-
-block = Block.unpack(b'G\xfdk\x88\xda5\xff\x8c\x97t\x9f\xcb\xe0\xa8\x07S\x8b9t:.9\x1d\xee\xf4\xb1\xda\xd1r\xaf'
-                             b'\xfcu\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-                             b'\x99\x01\x00\x00O\x1e,-\xe1\xa0!\x16D\x87\xcc\x923\xf7\xf6\xca\xad\xd1\t\x8eV\xdc\xe8t}N'
-                             b'\xfa\x8af\xbe\xe7\xef\x01\x00\x00\x00\x89\x92N\xd8h\xb5\xd6A\xae\x00\x00\x00D\x00\x00'
-                             b'\x00(\x00\x00\x00-----BEGIN PUBLIC KEY-----\nMFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAE7G2oklVAO7P'
-                             b'mkOwFKyoRLRZijrrlErST\neOrOEcxOUHG1ywjGYLLTWV1vvGl6rdL0wxwsqhl4c3uMqWHHA8sYXg==\n-----EN'
-                             b'D PUBLIC KEY-----\n\xbe\x0e\xa2U\xd6\xc9\xa6\xd6C\xe0\x06\xf5{\x89^4\x1b\xb3\x95z\x04}'
-                             b'\xc1\xf8]\xe3\xc6\x82\xdc\xb1\x90E\x00\x00\x00\x00\xbe\x0e\xa2U\xd6\xc9\xa6\xd6C\xe0\x06'
-                             b'\xf5{\x89^4\x1b\xb3\x95z\x04}\xc1\xf8]\xe3\xc6\x82\xdc\xb1\x90E\x00\x00\x00\x00\x00'
-                             b'\x00E@\x8b\x8dZ\x80\xde\x82k\xe1>0F\xf4\xbbh\x93\x04\xef\x8e\x9b\xe2\xb2\xd9\xe1\x9c\x80'
-                             b'\x10H\xb6\xa1\xfd\x02\xbf0E\x02!\x00\xfa\xff2\x10\x08\x18\xce~\x10\xb3\xe5\xc7y\xfd]\xd4'
-                             b'\x13tj\x9bx\n3-\xef\xe5\t\xe3\xd6R+\x16\x02 \x17L\x07\xb5E c\xc8\xf5l\xc7\xc1\xa7BM'
-                             b'\xbb0Y/\x9b\x89\xb0a_9\x0bi\xe2*\x0b\xda\xf9\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-                             b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00')
-
-# print("the dictionary of the result = ", block.show_block())
-# PIECE = 4096
-# p = len(block.b) % PIECE
-# packages = n_bytes(block.b[:-p], PIECE)
-# packages.append(block.b[-p:])
-# print(packages)
-# print(block.b)# b_block_pack method put the bytecode of a block into a list
-# print(len(block.b), p)
-batch1 = b'G\xfdk\x88\xda5\xff\x8c'
-# print(batch1[:-1])
-# print(batch1[-1:])
-# print(len(batch1))
-# print(struct.unpack("i", batch1[0:4]))
-result = []
-i = 0
-# print(len(batch1))
-# while i < len(batch1):
-#     l = struct.unpack('=i', batch1[i:i+4])[0]
-#     i = i + l + 4
-#     result.append(batch1[i-l:i])
-# print(struct.unpack('=i', batch1[0:0+4])[0])
-# print(block.previous_hash)
-# print(struct.unpack("8i", block.previous_hash))
-# print(batch1[0:4])
-
-# batch = [b'G\xfdk\x88\xda5\xff\x8c\x97t\x9f', b'\x8c\x97t\x9f\xcb\xe0\xa8\x07S', b'\x77\x00\x34']
-# length = [struct.pack('=i', len(individual)) for individual in batch]
-# print(length)
-# for i in range(len(length)):
-#     print(struct.unpack("=i", length[i]))
-#
-# print(reduce(lambda x, y: x + y, [l + c for l, c in zip(length, batch)]))
-# for l, c in zip(length, batch):
-#     print(l, "ok\n", c)

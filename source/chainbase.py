@@ -74,6 +74,10 @@ class ChainMsgHandler(socketserver.StreamRequestHandler):
             _ = send_handler(MsgType.TYPE_RESPONSE_ERROR, b'block unpack error')
         else:
             result = self.server.blockchain.add_block(block)
+            print("write a new block\n")
+            print(len(server.blockchain.chain.queue))
+            print(server.blockchain.utxo_two.utxo)
+            print(server.blockchain.UTXO_num)
             if result:
                 self.server.transpool.remove(block)
                 _ = send_handler(MsgType.TYPE_RESPONSE_OK, b'')
@@ -101,7 +105,8 @@ class ChainMsgHandler(socketserver.StreamRequestHandler):
         # do the search
         result = []
         for i in range(start, end):
-            result.append(self.server.blockchain.chain.queue[i].b)
+            if start <= server.blockchain.chain.queue[i].index <= end:
+                result.append(self.server.blockchain.chain.queue[i].b)
         # send back result
         self.request.sendall(send_handler(MsgType.TYPE_RESPONSE_OK, batch_handler(result)))
 

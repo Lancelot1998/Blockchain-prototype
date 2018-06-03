@@ -62,7 +62,6 @@ class PoWServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     def stop_miner():
         PoWServer.__set_mine(False)
 
-
     @staticmethod
     def on_new_block_mined(self: 'PoWServer', result):
         """
@@ -108,7 +107,6 @@ class PoWServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
             self.prev_hash = content
             print('prev_hash = ', content)
-
 
     def init_target(self):
         pass
@@ -172,9 +170,6 @@ class PoWServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
             return [Transaction.unpack(t) for t in trans]
 
-
-
-
     @staticmethod
     def mine(prev_hash, target):
         """
@@ -235,17 +230,7 @@ class PowHandler(socketserver.StreamRequestHandler):
         handlers[msgtype](content)
 
 
-
-
 if __name__ == '__main__':
-<<<<<<< HEAD
-    import random
-    address = ('localhost', 23333)
-    chainbase_address = r''
-
-    with PoWServer('node_1', address, PowHandler, chainbase_address) as server:
-        server.serve_forever()
-=======
     import sys
 
     address = ('localhost', int(sys.argv[2]))
@@ -254,4 +239,3 @@ if __name__ == '__main__':
     with PoWServer(sys.argv[4], address, PowHandler, chainbase_address) as server:
         server.peer.peer_discover(('localhost', int(sys.argv[3])))
         server.serve_forever()
->>>>>>> 76371e1d817361bf2b2eabd97d24a6401188a630
